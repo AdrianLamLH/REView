@@ -93,8 +93,13 @@ export default function ResearchReels() {
       <div className="flex-grow relative overflow-hidden">
         {reels.length > 0 && (
           <>
-            <Reel key={currentReelIndex} {...reels[currentReelIndex]} />
-            <button
+            <Reel 
+              key={currentReelIndex} 
+              {...reels[currentReelIndex]} 
+              onNext={handleNextReel}
+              onPrevious={handlePreviousReel}
+            />
+            {/* <button
               className="absolute top-1/2 left-4 transform -translate-y-1/2 bg-black bg-opacity-50 text-white p-2 rounded-full"
               onClick={handlePreviousReel}
             >
@@ -105,7 +110,7 @@ export default function ResearchReels() {
               onClick={handleNextReel}
             >
               →
-            </button>
+            </button> */}
           </>
         )}
         {loading && (

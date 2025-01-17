@@ -1,30 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
-import { generateText } from 'ai'
-import { openai } from '@ai-sdk/openai'
 
-// const openAIClient = new OpenAI({
-//   apiKey: process.env.OPENAI_API_KEY,
-// })
+import { getImagePromptsFromScript } from '@/app/utils/scriptAnalyzer'
 
-const openAIClient = new OpenAI({
+// async function getImagesByKeywords(topic: string): Promise<string[]> {
+//   // Using Unsplash's random image API with the topic as the query
+//   return [
+//     `https://source.unsplash.com/1024x1024/?${encodeURIComponent(topic)}`,
+//     `https://source.unsplash.com/1024x1024/?${encodeURIComponent(topic)}&sig=1`,
+//     `https://source.unsplash.com/1024x1024/?${encodeURIComponent(topic)}&sig=2`,
+//   ];
+// }
+
+// NVIDIA client for text generation
+const nvidiaClient = new OpenAI({
   baseURL: "https://integrate.api.nvidia.com/v1",
   apiKey: process.env.NVIDIA_API_KEY,
 })
 
-
-// Add this function at the top of the file
-async function getImagesByKeywords(topic: string): Promise<string[]> {
-  // For now, return placeholder images
-  // In a real implementation, you would integrate with an image search API
-  return [
-    `https://source.unsplash.com/random?${encodeURIComponent(topic)}`,
-    `https://source.unsplash.com/random?${encodeURIComponent(topic)}&sig=1`,
-    `https://source.unsplash.com/random?${encodeURIComponent(topic)}&sig=2`,
-  ];
-}
-
-
+// OpenAI client for TTS
+const openAIClient = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,8 +31,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
     }
 
-    // Generate related topics
-    const completion = await openAIClient.chat.completions.create({
+    // Generate related topics using NVIDIA
+    const completion = await nvidiaClient.chat.completions.create({
       model: "writer/palmyra-creative-122b",
       messages: [
         {
@@ -72,13 +69,13 @@ export async function POST(req: NextRequest) {
     const reels = await Promise.all(
       relatedTopics.map(async (relatedTopic: string) => {
         try {
-          // Generate reel content
-          const completion = await openAIClient.chat.completions.create({
+          // Generate reel content using NVIDIA
+          const completion = await nvidiaClient.chat.completions.create({
             model: "writer/palmyra-creative-122b",
             messages: [
               {
                 role: "user",
-                content: `Create a short educational script about "${relatedTopic}" suitable for a 30-second video. The script should be engaging and informative.`
+                content: `Tell me in a short educational response about "${relatedTopic}" suitable for a 30-second video. The speech should be engaging and informative.`
               }
             ],
             temperature: 0.7,
@@ -88,7 +85,7 @@ export async function POST(req: NextRequest) {
           
           const reelContent = completion.choices[0].message.content
 
-          // Generate TTS audio
+          // Generate TTS audio using OpenAI
           const mp3Response = await openAIClient.audio.speech.create({
             model: "tts-1",
             voice: "alloy",
@@ -99,26 +96,23 @@ export async function POST(req: NextRequest) {
           const audioBase64 = audioBuffer.toString('base64')
           const audioSrc = `data:audio/mp3;base64,${audioBase64}`
 
-          // // Generate images
-          // const imagePrompts = [
-          //   `An image representing ${relatedTopic}`,
-          //   `A visual explanation of ${relatedTopic}`,
-          //   `An infographic about ${relatedTopic}`,
-          // ]
+          // Get images
+          const imagePrompts = await getImagePromptsFromScript(reelContent)
 
-          // const images = await Promise.all(
-          //   imagePrompts.map(async (prompt) => {
-          //     const response = await openAIClient.images.generate({
-          //       model: "dall-e-3",
-          //       prompt: prompt,
-          //       n: 1,
-          //       size: "1024x1024",
-          //     })
-          //     return response.data[0].url
-          //   })
-          // )
-          // Replace the image generation section (lines 66-83) with:
-          const images = await getImagesByKeywords(relatedTopic);
+          // Generate images using DALL-E
+          const images = await Promise.all(
+            imagePrompts.map(async (prompt) => {
+              const response = await openAIClient.images.generate({
+                model: "dall-e-3",
+                prompt,
+                n: 1,
+                size: "1024x1024",
+                quality: "standard",
+                style: "natural"
+              })
+              return response.data[0].url
+            })
+          )
 
           return {
             title: relatedTopic,
@@ -145,4 +139,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 })
   }
 }
-
