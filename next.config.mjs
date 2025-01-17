@@ -25,6 +25,11 @@ const nextConfig = {
     unoptimized: true,
     domains: ['source.unsplash.com', 'images.unsplash.com'],
   },
+  // Add this section to increase the serverless function timeout
+  serverRuntimeConfig: {
+    // Increase to 5 minutes (300 seconds)
+    apiTimeout: 300,
+  },
 }
 
 mergeConfig(nextConfig, userConfig)

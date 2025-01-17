@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
       model: "writer/palmyra-creative-122b",
       messages: [
         {
+          role: "system",
+          content: "You are a direct response system. Only output the exact requested content with no additional text, formatting, or explanations."
+        },
+        {
           role: "user",
           content: `Given the research topic "${topic}", generate 3 related subtopics. Return ONLY a JSON array of strings with no markdown formatting, backticks, or additional text. For example: ["topic 1", "topic 2", "topic 3"]`
         }
@@ -73,6 +77,10 @@ export async function POST(req: NextRequest) {
           const completion = await nvidiaClient.chat.completions.create({
             model: "writer/palmyra-creative-122b",
             messages: [
+              {
+                role: "system",
+                content: "You are a direct response system. Only output the exact requested content with no additional text, formatting, or explanations."
+              },
               {
                 role: "user",
                 content: `Tell me in a short educational response about "${relatedTopic}" suitable for a 30-second video. The speech should be engaging and informative.`
